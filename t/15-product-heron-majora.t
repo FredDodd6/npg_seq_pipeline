@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use Test::More tests => 6;
+use Test::More tests => 14;
 use strict;
 use warnings;
 use Getopt::Long;
@@ -49,21 +49,21 @@ ok(defined $ds_ref, "structure is produced");
 my $hardcoded_ds= ({NT1648725O=> {
                           'MILK-AB8E21' =>  {
                                                   central_sample_id =>"MILK-AB8E21",
-                                                  submission_org => undef
+                                                  submission_org => "1"
                                                  },
                           'MILK-AB7F7A' => {
                                                   central_sample_id =>"MILK-AB7F7A",
-                                                  submission_org => undef
+                                                  submission_org => "1"
                                                 }
                                 },
                     NT1648726P=>{
                           'MILK-AB7D8F' =>  {
                                                   central_sample_id => "MILK-AB7D8F",
-                                                  submission_org => undef
+                                                  submission_org => "1"
                                                 },
                           'MILK-AB7772' => {
                                                   central_sample_id => "MILK-AB7772",
-                                                  submission_org => undef
+                                                  submission_org => "1"
                                                 }
                               }
                    });
@@ -82,44 +82,74 @@ my %no_biosample_ds = {NT1648725O=> {},NT1648726P=>{}};
 my $no_biosample_ref = \%no_biosample_ds;
 
 
-#using compact json with ALL submission_org = 1
+#usin( compact json with ALL submission_org = 1
 my $test_schema=t::dbic_util->new()->test_schema_mlwh('t/data/fixtures/mlwh-majora');
 my $test_rs =$test_schema->resultset("IseqProductMetric")->search({"me.id_run" => $id_run},{join=>{"iseq_flowcell" => "sample"}}); 
 
-print (Dumper([map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all()]));
 
+my @cog_meta_val_before = (map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all());
 update_metadata($test_rs,$ds_ref);
-
-print (Dumper([map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all()]));
-
+my @cog_meta_val_after = (map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all());
 
 
+my $num_values = 0;
+foreach my $cog_meta_val_before (@cog_meta_val_before){
+  $num_values++ if $cog_meta_val_before eq '3';
+}
+my $num_set = 0;
+my $num_undef = 0;
+foreach my $cog_meta_val_after (@cog_meta_val_after){
+  $num_set++ if $cog_meta_val_after eq '1';
+  $num_undef++ if $cog_meta_val_after eq undef;
+}
 
 
+is($num_values,20,"values before update correct");
+is(scalar @cog_meta_val_after, 20, "20 cog_sample_meta values returned");
+is($num_set,4, "4 values set to 1 from simple json");
+is($num_undef, 16, "16 values set to undef");
 
-#using ds with no biosample
-#refresh database
+
+#updating with no biosample
 my $test_schema=t::dbic_util->new()->test_schema_mlwh('t/data/fixtures/mlwh-majora');
 my $test_rs =$test_schema->resultset("IseqProductMetric")->search({"id_run" => $id_run},{join=>{"iseq_flowcell" => "sample"}}); 
 
-print (Dumper([map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all()]));
-
-
+my @cog_meta_val_before = (map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all());
 update_metadata($test_rs,$no_biosample_ref);
-my $test_rs =$test_schema->resultset("IseqProductMetric")->search({"id_run" => $id_run},{join=>{"iseq_flowcell" => "sample"}}); 
-print (Dumper([map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all()]));
+my @cog_meta_val_after = (map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all());
 
 
-#using empty ds
-#refresh database
+my $num_values = 0;
+foreach my $cog_meta_val_before (@cog_meta_val_before){
+  $num_values++ if $cog_meta_val_before eq '3';
+}
+
+my $num_undef = 0;
+foreach my $cog_meta_val_after (@cog_meta_val_after){
+  $num_undef++ if $cog_meta_val_after eq undef;
+}
+is($num_values,20,"values before no biosample update correct");
+is($num_undef,20,"values after no biosample update correct");
+
+#updating with empty data structure
 my $test_schema=t::dbic_util->new()->test_schema_mlwh('t/data/fixtures/mlwh-majora');
 my $test_rs =$test_schema->resultset("IseqProductMetric")->search({"id_run" => $id_run},{join=>{"iseq_flowcell" => "sample"}}); 
 
-print (Dumper([map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all()]));
-
+my @cog_meta_val_before = (map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all());
 update_metadata($test_rs,$empty_ref);
-my $test_rs =$test_schema->resultset("IseqProductMetric")->search({"id_run" => $id_run},{join=>{"iseq_flowcell" => "sample"}}); 
-print (Dumper([map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all()]));
+my @cog_meta_val_after = (map{$_->iseq_heron_product_metric->cog_sample_meta}$test_rs->all());
+
+my $num_values = 0;
+foreach my $cog_meta_val_before (@cog_meta_val_before){
+  $num_values++ if $cog_meta_val_before eq '3';
+}
+
+my $num_undef = 0;
+foreach my $cog_meta_val_after (@cog_meta_val_after){
+  $num_undef++ if $cog_meta_val_after eq undef;
+}
+is($num_values,20,"values before update correct");
+is($num_undef,20,"all values assigned undef");
 
 ok(defined $test_rs, "last test");#temporary check
 done_testing();
