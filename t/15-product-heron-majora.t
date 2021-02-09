@@ -1,12 +1,7 @@
-#!/usr/bin/env perl
-use Test::More tests => 42;
 use strict;
 use warnings;
+use Test::More tests => 42;
 use JSON;
-use DateTime;
-use Getopt::Long;
-use FindBin qw($Bin);
-use lib ( -d "$Bin/../lib/perl5" ? "$Bin/../lib/perl5" : "$Bin/../lib" );
 use t::dbic_util;
 use Test::Mock::LWP::UserAgent;
 use Test::Mock::HTTP::Response;
@@ -317,5 +312,4 @@ is_deeply($Mock_decoded_data->{runs},$encoded_data->{runs}, 'run_name is passed 
 is($Mock_decoded_data->{username},$encoded_data->{username}, 'username is passed correctly');
 is($Mock_decoded_data->{token},$encoded_data->{token}, 'token is passed correctly');
 
-done_testing();
-
+1;
