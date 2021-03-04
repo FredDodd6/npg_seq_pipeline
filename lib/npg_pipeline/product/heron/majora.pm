@@ -9,7 +9,8 @@ use HTTP::Request;
 use JSON::XS;
 use LWP::UserAgent;
 use Log::Log4perl qw(:easy);
-use List::MoreUtils qw(any);
+use List::MoreUtils qw(any uniq);
+
 use npg_tracking::Schema;
 use WTSI::DNAP::Warehouse::Schema;
 
@@ -330,11 +331,12 @@ sub update_majora{
   my $runfolder_name =
     $self->_npg_tracking_schema->resultset(q(Run))->find($id_run)->folder_name;
   my $rs=$self->_mlwh_schema->resultset(q(IseqProductMetric))->search_rs(
-    {'me.id_run'=>$id_run, tag_index=>{q(>) => 0}},
-    {join=>{iseq_flowcell=>q(sample)}});
+    {'me.id_run' => $id_run, 'me.tag_index' => {q(>) => 0}},
+    {join     => [{iseq_flowcell=>q(sample)}, q(iseq_heron_product_metric)],
+     prefetch => [{iseq_flowcell=>q(sample)}, q(iseq_heron_product_metric)]});
   my $rsu=$self->_mlwh_schema->resultset(q(Sample))->search(
     {q(iseq_heron_product_metric.climb_upload)=>{q(-not)=>undef}},
-    {join=>{iseq_flowcells=>{iseq_product_metrics=>q(iseq_heron_product_metric)}}});
+    {join     => {iseq_flowcells=>{iseq_product_metrics=>q(iseq_heron_product_metric)}}});
 
   my %l2bs; my %l2pp; my %l2lsp; my %r2l;
 
@@ -365,7 +367,17 @@ sub update_majora{
         $self->logger->error_die("Do not know how to deal with library type: '$lt'");
       }
 
-      $r2l{$runfolder_name}{$lib}++;
+      my $pp_name;
+      my $pp_version;
+      my $heron_row = $r->iseq_heron_product_metric();
+      if ($heron_row) {
+        $pp_name    = $heron_row->pp_name;
+        $pp_version = $heron_row->pp_version;
+      }
+      $pp_name    ||= q();
+      $pp_version ||= q();
+
+      push @{$r2l{$runfolder_name}{$lib}}, {$pp_name => $pp_version};
       $l2bs{$lib}{$sample_name}++;
       $l2pp{$lib}{$primer_panel}++;
       $l2lsp{$lib}{$lib_seq_protocol}++;
@@ -406,15 +418,27 @@ sub update_majora{
   # adding sequencing run
   $url = q(api/v2/process/sequencing/add/);
 
-  foreach my $rn (sort keys %r2l) {
-    foreach my $lb (sort keys %{$r2l{$rn}}) {
-      my $instrument_model = ($rn=~m{_MS}smx?q(MiSeq):q(NovaSeq));
+  foreach my $runfolder_name (sort keys %r2l) {
+    foreach my $lb ( sort keys %{$r2l{$runfolder_name}} ) {
+      my $instrument_model = ($runfolder_name =~ m{_MS}smx ? q(MiSeq) : q(NovaSeq));
+      my @pipelines_info = @{$r2l{$runfolder_name}{$lb}};
+      my @pp_names = uniq map { keys %{$_} } @pipelines_info;
+      my $pp_name = (@pp_names == 1) ? $pp_names[0] : q();
+      my $pp_version = q();
+      if ($pp_name) {
+        my @pp_versions = uniq map { values %{$_} } @pipelines_info;
+        if (@pp_versions == 1) {
+          $pp_version = $pp_versions[0];
+        }
+      }
       my $data_to_encode = {
                             library_name => $lb,
                             runs=> [{
-                                     run_name             => $rn,
+                                     run_name             => $runfolder_name,
                                      instrument_make      => 'ILLUMINA',
                                      instrument_model     => $instrument_model,
+                                     bioinfo_pipe_version => $pp_version,
+                                     bioinfo_pipe_name    => $pp_name
                                    }]
                            };
       $self->logger->debug("Sending call to update Majora for library $lb");
