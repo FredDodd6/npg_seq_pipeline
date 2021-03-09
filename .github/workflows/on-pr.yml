@@ -1,0 +1,44 @@
+name: on-pr
+on: [push, pull_request]
+jobs:
+  build: # might not need to check sudo
+    strategy:
+      matrix:
+        os: ['ubuntu-18.04']
+        perl: ['5.26'] # TODO this version of perl threading support# multithreading (5.26-shrplib - in travis) add threading support
+    runs-on: ${{matrix.os}} # potential for 20.04 (?) # this is dist: bionic
+    name: Perl ${{ matrix.perl }} on ${{ matrix.os }}  # can simplify this if no other versions/os' are needed
+    steps:
+    - uses: actions/checkout@v2 # versioning (check )
+    
+    #install libgd-dev
+    - name: install libgd-dev
+      run:
+          sudo apt-get install -y libgd-dev # TODO change to cache method? -  5GB limit on caches
+
+    #run the travis install
+    - name: Set up perl
+      uses: shogo82148/actions-setup-perl@v1 #TODO find method that doesnt require this repo? 
+      with:
+          perl-version: ${{ matrix.perl }}
+
+    - name: get cpanm
+      uses: perl-actions/install-with-cpanm@v1.1
+      
+
+    - name: Travis install
+      run: |
+          sudo ${GITHUB_WORKSPACE}/scripts/travis_install.sh $WTSI_NPG_GITHUB_URL $WTSI_NPG_CONDA_REPO $WTSI_NPG_BUILD_BRANCH # TODO add path if errors on location of files
+      env:
+        WTSI_NPG_GITHUB_URL: https://github.com/wtsi-npg
+        WTSI_NPG_CONDA_REPO: https://dnap.cog.sanger.ac.uk/npg/conda/prod/generic
+        WTSI_NPG_BUILD_BRANCH: ${GITHUB_REF##*/} #getting name of current github branch
+    # try extending path
+    - run: |
+          perl -V
+          cpanm --installdeps .
+
+    - name: run Build.PL and ./Build   
+      run: |
+          export TEST_AUTHOR=1
+          perl Build.PL && ./Build test --verbose # might have to add path

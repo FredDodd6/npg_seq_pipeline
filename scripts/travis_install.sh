@@ -5,6 +5,11 @@ set -e -x
 # iRODS test server is not set up, so tests that require it will
 # be skipped
 
+#setting environment variables
+WTSI_NPG_GITHUB_URL=$1
+WTSI_NPG_CONDA_REPO=$2
+WTSI_NPG_BUILD_BRANCH=$3
+
 # install conda client
 wget "https://repo.continuum.io/miniconda/Miniconda2-4.6.14-Linux-x86_64.sh" -O miniconda.sh;
 chmod +x miniconda.sh;
@@ -20,8 +25,11 @@ conda install --yes --channel ${WTSI_NPG_CONDA_REPO} --channel default --mkdir -
 
 # The default build branch for all repositories. This defaults to
 # TRAVIS_BRANCH unless set in the Travis build environment.
-WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH}
-
+WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH} #TODO this is missing a value...current github branch to add here instead of travis
+echo This is the WTSI_NPG_BUILD_BRANCH:
+echo ${WTSI_NPG_BUILD_BRANCH}
+echo /########/
+# look at actions regarding cpanm shogo...
 # CPAN
 cpanm --quiet --notest Alien::Tidyp # For npg_tracking
 cpanm --quiet --notest Module::Build
