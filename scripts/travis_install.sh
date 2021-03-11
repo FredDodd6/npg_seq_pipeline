@@ -29,13 +29,6 @@ WTSI_NPG_BUILD_BRANCH=${WTSI_NPG_BUILD_BRANCH:=$TRAVIS_BRANCH} #TODO this is mis
 echo This is the WTSI_NPG_BUILD_BRANCH:
 echo ${WTSI_NPG_BUILD_BRANCH}
 echo /########/
-# look at actions regarding cpanm shogo...
-# CPAN
-cpanm --quiet --notest Alien::Tidyp # For npg_tracking
-cpanm --quiet --notest Module::Build
-cpanm --quiet --notest Net::SSLeay
-cpanm --quiet --notest https://github.com/chapmanb/vcftools-cpan/archive/v0.953.tar.gz # for npg_qc
-
 # WTSI NPG Perl repo dependencies
 repos=""
 for repo in perl-dnap-utilities perl-irods-wrap ml_warehouse npg_ml_warehouse npg_tracking npg_seq_common npg_qc; do

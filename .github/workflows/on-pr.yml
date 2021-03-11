@@ -21,10 +21,15 @@ jobs:
       uses: shogo82148/actions-setup-perl@v1 #TODO find method that doesnt require this repo? 
       with:
           perl-version: ${{ matrix.perl }}
+          multi-thread: true
 
     - name: get cpanm
       uses: perl-actions/install-with-cpanm@v1.1
-      
+    - run: |
+          cpanm --quiet --notest Alien::Tidyp # For npg_tracking
+          cpanm --quiet --notest Module::Build
+          cpanm --quiet --notest Net::SSLeay
+          cpanm --quiet --notest https://github.com/chapmanb/vcftools-cpan/archive/v0.953.tar.gz # for npg_qc 
 
     - name: Travis install
       run: |
